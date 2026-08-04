@@ -408,12 +408,25 @@ def launch_instance():
 
     # Step 3 - Get Subnet ID
     oci_subnet_id = OCI_SUBNET_ID
-    if not oci_subnet_id:
+    if oci_subnet_id and oci_subnet_id.startswith("ocid1.vcn."):
+        logging.info("Provided OCI_SUBNET_ID is a VCN OCID (%s). Fetching subnets in this VCN...", oci_subnet_id)
+        subnets = execute_oci_command(network_client, "list_subnets", compartment_id=oci_tenancy, vcn_id=oci_subnet_id)
+        if subnets:
+            oci_subnet_id = subnets[0].id
+            logging.info("Resolved to Subnet ID: %s", oci_subnet_id)
+        else:
+            raise ValueError(f"No subnets found inside VCN {OCI_SUBNET_ID}")
+    elif not oci_subnet_id:
         subnets = execute_oci_command(network_client,
                                       "list_subnets",
                                       compartment_id=oci_tenancy)
-        oci_subnet_id = subnets[0].id
-    logging.info("OCI_SUBNET_ID: %s", oci_subnet_id)
+        if subnets:
+            oci_subnet_id = subnets[0].id
+            logging.info("Auto-discovered Subnet ID: %s", oci_subnet_id)
+        else:
+            raise ValueError(f"No subnets found in tenancy {oci_tenancy}")
+    else:
+        logging.info("OCI_SUBNET_ID: %s", oci_subnet_id)
 
     # Step 4 - Get Image ID of Compute Shape
     if not OCI_IMAGE_ID:
@@ -460,10 +473,12 @@ def launch_instance():
                 print(f"⏱️ Runtime limit reached ({MAX_RUNTIME_SECS}s). Exiting for next scheduled run.")
                 return
 
+        target_ad = next(oci_ad_names)
+        print(f"🚀 Attempting to launch instance in AD: {target_ad} (Shape: {OCI_COMPUTE_SHAPE}, Subnet: {oci_subnet_id})...")
         try:
             launch_instance_response = compute_client.launch_instance(
                 launch_instance_details=oci.core.models.LaunchInstanceDetails(
-                    availability_domain=next(oci_ad_names),
+                    availability_domain=target_ad,
                     compartment_id=oci_tenancy,
                     create_vnic_details=oci.core.models.CreateVnicDetails(
                         assign_public_ip=assign_public_ip,
