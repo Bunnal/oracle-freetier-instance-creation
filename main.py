@@ -41,7 +41,7 @@ ASSIGN_PUBLIC_IP = os.getenv("ASSIGN_PUBLIC_IP", "false").strip()
 BOOT_VOLUME_SIZE = os.getenv("BOOT_VOLUME_SIZE", "50").strip()
 NOTIFY_EMAIL = os.getenv("NOTIFY_EMAIL", 'False').strip().lower() == 'true'
 EMAIL = os.getenv("EMAIL", "").strip()
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "").strip()
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "").replace(" ", "").strip()
 DISCORD_WEBHOOK = os.getenv("DISCORD_WEBHOOK", "").strip()
 
 # Max runtime in seconds (0 = unlimited, for CI use). Set via env var.
@@ -55,11 +55,11 @@ try:
     if OCI_COMPUTE_SHAPE not in (ARM_SHAPE, E2_MICRO_SHAPE):
         raise ValueError(f"{OCI_COMPUTE_SHAPE} is not an acceptable shape")
     env_has_spaces = any(isinstance(confg_var, str) and " " in confg_var
-                        for confg_var in [OCI_CONFIG, OCT_FREE_AD,WAIT_TIME,
+                        for confg_var in [OCI_CONFIG, OCT_FREE_AD, WAIT_TIME,
                                 SSH_AUTHORIZED_KEYS_FILE, OCI_IMAGE_ID, 
                                 OCI_COMPUTE_SHAPE, SECOND_MICRO_INSTANCE, 
-                                OCI_SUBNET_ID, OS_VERSION, NOTIFY_EMAIL,EMAIL,
-                                EMAIL_PASSWORD, DISCORD_WEBHOOK]
+                                OCI_SUBNET_ID, OS_VERSION, NOTIFY_EMAIL, EMAIL,
+                                DISCORD_WEBHOOK]
                         )
     config_has_spaces = any(' ' in value for section in config.sections() 
                             for _, value in config.items(section))
