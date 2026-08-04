@@ -4,12 +4,6 @@ on:
   schedule:
     - cron: '*/15 * * * *'
   workflow_dispatch:
-    inputs:
-      max_runtime_minutes:
-        description: 'Max runtime in minutes (0 = use default 13 min)'
-        required: false
-        default: '0'
-        type: string
 
 jobs:
   create-instance:
@@ -40,7 +34,7 @@ jobs:
       - name: Run instance creation
         timeout-minutes: 14
         env:
-          MAX_RUNTIME_SECS: ${{ github.event.inputs.max_runtime_minutes != '0' && github.event.inputs.max_runtime_minutes && format('{0}', fromJSON(github.event.inputs.max_runtime_minutes) * 60) || '780' }}
+          MAX_RUNTIME_SECS: '780'
         run: python main.py
 
       - name: Check if instance was created
