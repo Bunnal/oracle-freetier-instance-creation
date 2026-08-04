@@ -294,15 +294,16 @@ def handle_errors(command, data, log):
     """
 
     # Check for temporary errors that can be retried
-    if "code" in data:
-        if (data["code"] in ("TooManyRequests", "Out of host capacity.", 'InternalError')) \
-                or (data["message"] in ("Out of host capacity.", "Bad Gateway")):
-            log.info("Command: %s--\nOutput: %s", command, data)
-            time.sleep(WAIT_TIME)
-            return True
+    status = data.get("status")
+    code = str(data.get("code", ""))
+    msg = str(data.get("message", ""))
 
-    if "status" in data and data["status"] == 502:
-        log.info("Command: %s~~\nOutput: %s", command, data)
+    if (code in ("TooManyRequests", "Out of host capacity.", "InternalError", "LimitExceeded")) \
+            or ("capacity" in msg.lower()) \
+            or ("gateway" in msg.lower()) \
+            or ("unavailable" in msg.lower()) \
+            or (status in (429, 500, 502, 503, 504)):
+        log.info("Command: %s [Retryable]\nOutput: %s", command, data)
         time.sleep(WAIT_TIME)
         return True
     failure_msg = '\n'.join([f'{key}: {value}' for key, value in data.items()])
@@ -525,6 +526,9 @@ def launch_instance():
                 "message": srv_err.message,
             }
             handle_errors("launch_instance", data, logging_step5)
+        except Exception as conn_err:
+            logging_step5.warning("Transient connection/network error: %s. Retrying in %ds...", conn_err, WAIT_TIME)
+            time.sleep(WAIT_TIME)
 
 
 if __name__ == "__main__":

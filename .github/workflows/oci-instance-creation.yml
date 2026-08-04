@@ -2,7 +2,7 @@ name: OCI Free Tier Instance Creation
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 jobs:
@@ -31,10 +31,9 @@ jobs:
           echo "${{ secrets.OCI_ENV_CONTENT }}" > oci.env
           echo "${{ secrets.SSH_PUBLIC_KEY }}" > id_rsa.pub
 
-      - name: Run instance creation
-        timeout-minutes: 14
+      - name: Run instance creation (Runs non-stop until created)
         env:
-          MAX_RUNTIME_SECS: '780'
+          MAX_RUNTIME_SECS: '0'
         run: python main.py
 
       - name: Check if instance was created
