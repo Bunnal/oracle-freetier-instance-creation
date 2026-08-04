@@ -1,0 +1,70 @@
+name: OCI Free Tier Instance Creation
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+    inputs:
+      max_runtime_minutes:
+        description: 'Max runtime in minutes (0 = use default 13 min)'
+        required: false
+        default: '0'
+        type: string
+
+jobs:
+  create-instance:
+    runs-on: self-hosted
+    if: vars.INSTANCE_CREATED != 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Setup OCI config files
+        run: |
+          echo "${{ secrets.OCI_CONFIG_CONTENT }}" > oci_config
+          echo "${{ secrets.OCI_API_PRIVATE_KEY }}" > oci_api_private_key.pem
+          chmod 600 oci_api_private_key.pem
+          echo "${{ secrets.OCI_ENV_CONTENT }}" > oci.env
+
+      - name: Run instance creation
+        timeout-minutes: 14
+        env:
+          MAX_RUNTIME_SECS: ${{ github.event.inputs.max_runtime_minutes != '0' && github.event.inputs.max_runtime_minutes && format('{0}', fromJSON(github.event.inputs.max_runtime_minutes) * 60) || '780' }}
+        run: python main.py
+
+      - name: Check if instance was created
+        if: always()
+        run: |
+          if [ -f "INSTANCE_CREATED" ]; then
+            echo "✅ Instance created successfully!"
+            echo "Set the repository variable INSTANCE_CREATED=true to stop future runs."
+            cat INSTANCE_CREATED
+          else
+            echo "⏳ Instance not yet created. Will retry on next scheduled run."
+          fi
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oci-logs-${{ github.run_id }}
+          path: |
+            *.log
+            INSTANCE_CREATED
+            UNHANDLED_ERROR.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Cleanup sensitive files
+        if: always()
+        run: rm -f oci_config oci_api_private_key.pem oci.env
