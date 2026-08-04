@@ -31,8 +31,7 @@ Automate Oracle Cloud Free Tier instance creation using GitHub Actions with a **
 ### 1. Fork / Clone This Repo
 
 ```bash
-# Fork on GitHub, then clone your fork
-git clone https://github.com/<your-username>/oracle-freetier-instance-creation.git
+git clone https://github.com/Bunnal/oracle-freetier-instance-creation.git
 cd oracle-freetier-instance-creation
 ```
 
@@ -118,15 +117,10 @@ Go to **Settings** → **Actions** → **Runners** → **New self-hosted runner*
 On your server, run the commands GitHub provides:
 
 ```bash
-# Download (GitHub will show the exact URL for your repo)
-mkdir actions-runner && cd actions-runner
-curl -o actions-runner-linux-x64-2.321.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.321.0/actions-runner-linux-x64-2.321.0.tar.gz
-tar xzf ./actions-runner-linux-x64-2.321.0.tar.gz
+# GitHub will show the exact download URL and token for your repo.
+# Copy and run those commands on your server. Then:
 
-# Configure
-./config.sh --url https://github.com/<your-username>/oracle-freetier-instance-creation --token <TOKEN>
-
-# Install as service (runs on boot)
+# Install as a service so it runs on boot
 sudo ./svc.sh install
 sudo ./svc.sh start
 ```
@@ -162,7 +156,7 @@ Once your instance is created:
 | `DISPLAY_NAME` | No | — | Instance display name |
 | `OCI_COMPUTE_SHAPE` | No | `VM.Standard.A1.Flex` | `VM.Standard.A1.Flex` or `VM.Standard.E2.1.Micro` |
 | `SECOND_MICRO_INSTANCE` | No | `False` | Set `True` for second Micro instance |
-| `REQUEST_WAIT_TIME_SECS` | No | `60` | Seconds between retry attempts |
+| `REQUEST_WAIT_TIME_SECS` | Yes | `0` | Seconds between retry attempts (set to `60` recommended) |
 | `SSH_AUTHORIZED_KEYS_FILE` | No | — | Path to SSH public key (auto-generated if missing) |
 | `OCI_SUBNET_ID` | No | — | Subnet OCID (auto-detected if empty) |
 | `OCI_IMAGE_ID` | No | — | Image OCID (auto-detected from OS/version if empty) |
