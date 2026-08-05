@@ -29,7 +29,9 @@ E2_MICRO_SHAPE = "VM.Standard.E2.1.Micro"
 OCI_CONFIG = os.getenv("OCI_CONFIG", "").strip()
 OCT_FREE_AD = os.getenv("OCT_FREE_AD", "").strip()
 DISPLAY_NAME = os.getenv("DISPLAY_NAME", "").strip()
-WAIT_TIME = int(os.getenv("REQUEST_WAIT_TIME_SECS", "0").strip())
+WAIT_TIME = int(os.getenv("REQUEST_WAIT_TIME_SECS", "60").strip() or "60")
+if WAIT_TIME <= 0:
+    WAIT_TIME = 60
 SSH_AUTHORIZED_KEYS_FILE = os.getenv("SSH_AUTHORIZED_KEYS_FILE", "").strip()
 OCI_IMAGE_ID = os.getenv("OCI_IMAGE_ID", None).strip() if os.getenv("OCI_IMAGE_ID") else None
 OCI_COMPUTE_SHAPE = os.getenv("OCI_COMPUTE_SHAPE", ARM_SHAPE).strip()
@@ -455,6 +457,9 @@ def launch_instance():
 
     # Step 5 - Launch Instance if it's not already exist and running
     instance_exist_flag = check_instance_state_and_write(oci_tenancy, OCI_COMPUTE_SHAPE, tries=1)
+    if instance_exist_flag:
+        logging.info("Instance already exists and is running.")
+        return True
 
     if OCI_COMPUTE_SHAPE == "VM.Standard.A1.Flex":
         shape_config = oci.core.models.LaunchInstanceShapeConfigDetails(ocpus=2, memory_in_gbs=12)
@@ -472,7 +477,7 @@ def launch_instance():
                     MAX_RUNTIME_SECS, elapsed
                 )
                 print(f"⏱️ Runtime limit reached ({MAX_RUNTIME_SECS}s). Exiting for next scheduled run.")
-                return
+                return False
 
         target_ad = next(oci_ad_names)
         print(f"🚀 Attempting to launch instance in AD: {target_ad} (Shape: {OCI_COMPUTE_SHAPE}, Subnet: {oci_subnet_id})...")
@@ -510,6 +515,8 @@ def launch_instance():
                     "Command: launch_instance\nOutput: %s", launch_instance_response
                 )
                 instance_exist_flag = check_instance_state_and_write(oci_tenancy, OCI_COMPUTE_SHAPE)
+                if instance_exist_flag:
+                    return True
 
         except oci.exceptions.ServiceError as srv_err:
             if srv_err.code == "LimitExceeded":                
@@ -518,7 +525,7 @@ def launch_instance():
                 instance_exist_flag = check_instance_state_and_write(oci_tenancy, OCI_COMPUTE_SHAPE)
                 if instance_exist_flag:
                     logging_step5.info("%s , exiting the program", srv_err.code)
-                    sys.exit()
+                    return True
                 logging_step5.info("Didn't find an instance , proceeding with retries")     
             data = {
                 "status": srv_err.status,
@@ -530,6 +537,8 @@ def launch_instance():
             logging_step5.warning("Transient connection/network error: %s. Retrying in %ds...", conn_err, WAIT_TIME)
             time.sleep(WAIT_TIME)
 
+    return instance_exist_flag
+
 
 if __name__ == "__main__":
     if MAX_RUNTIME_SECS > 0:
@@ -537,10 +546,12 @@ if __name__ == "__main__":
     else:
         print("🔄 Running with no time limit (local mode)")
 
-    send_discord_message("🚀 OCI Instance Creation Script: Starting up! Let's create some cloud magic!")
     try:
-        launch_instance()
-        send_discord_message("🎉 Success! OCI Instance has been created. Time to celebrate!")
+        instance_created = launch_instance()
+        if instance_created or Path("INSTANCE_CREATED").is_file():
+            send_discord_message("🎉 Success! OCI Instance has been created. Time to celebrate!")
+        else:
+            print("⏳ Run cycle completed without instance creation. Waiting for next run.")
     except Exception as e:
         error_message = f"😱 Oops! Something went wrong with the OCI Instance Creation Script:\n{str(e)}"
         send_discord_message(error_message)

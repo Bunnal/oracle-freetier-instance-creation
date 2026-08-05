@@ -156,7 +156,7 @@ Once your instance is created:
 | `DISPLAY_NAME` | No | — | Instance display name |
 | `OCI_COMPUTE_SHAPE` | No | `VM.Standard.A1.Flex` | `VM.Standard.A1.Flex` or `VM.Standard.E2.1.Micro` |
 | `SECOND_MICRO_INSTANCE` | No | `False` | Set `True` for second Micro instance |
-| `REQUEST_WAIT_TIME_SECS` | Yes | `0` | Seconds between retry attempts (set to `60` recommended) |
+| `REQUEST_WAIT_TIME_SECS` | No | `60` | Seconds between retry attempts (default: 60) |
 | `SSH_AUTHORIZED_KEYS_FILE` | No | — | Path to SSH public key (auto-generated if missing) |
 | `OCI_SUBNET_ID` | No | — | Subnet OCID (auto-detected if empty) |
 | `OCI_IMAGE_ID` | No | — | Image OCID (auto-detected from OS/version if empty) |
@@ -168,7 +168,7 @@ Once your instance is created:
 | `EMAIL` | No | — | Gmail address (sender = recipient) |
 | `EMAIL_PASSWORD` | No | — | Gmail app password |
 | `DISCORD_WEBHOOK` | No | — | Discord webhook URL |
-| `MAX_RUNTIME_SECS` | No | `0` | Max script runtime in seconds (0 = unlimited) |
+| `MAX_RUNTIME_SECS` | No | `780` (Actions) / `0` (Local) | Max script runtime in seconds (0 = unlimited) |
 
 ## Local Development
 
