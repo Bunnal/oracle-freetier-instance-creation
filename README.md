@@ -6,11 +6,11 @@ Automate Oracle Cloud Free Tier instance creation using GitHub Actions with a **
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  GitHub Actions (cron every 15 min)                     │
+│  GitHub Actions (cron every 20 min)                     │
 │                                                         │
 │  1. Checkout repo                                       │
 │  2. Write secrets → oci_config, oci.env, PEM key        │
-│  3. Run main.py for ~13 minutes                         │
+│  3. Run main.py for ~15 minutes                         │
 │  4. Instance created? → Stop. Not yet? → Exit cleanly.  │
 │  5. Upload logs as artifacts                            │
 │  6. Cleanup sensitive files                             │
@@ -129,7 +129,7 @@ sudo ./svc.sh start
 
 ### 5. Trigger the Workflow
 
-**Option A — Wait for cron:** The workflow runs automatically every 15 minutes.
+**Option A — Wait for cron:** The workflow runs automatically every 20 minutes (15 mins active run + 5 mins cooldown).
 
 **Option B — Manual trigger:** Go to **Actions** → **OCI Free Tier Instance Creation** → **Run workflow**.
 
