@@ -1,18 +1,18 @@
-name: OCI Free Tier Instance Creation
+name: OCI Always Free Provisioning
 
 on:
   schedule:
-    - cron: '*/20 * * * *'
+    - cron: '*/15 * * * *'
   workflow_dispatch:
 
 concurrency:
-  group: oci-instance-creation
+  group: oci-provisioning-lock
   cancel-in-progress: false
 
 jobs:
   create-instance:
-    runs-on: self-hosted
-    timeout-minutes: 20
+    runs-on: [self-hosted, linux, x64]
+    timeout-minutes: 14
     if: vars.INSTANCE_CREATED != 'true'
 
     steps:
@@ -23,24 +23,41 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: '3.11'
-          cache: 'pip'
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Setup OCI config files
-        run: |
-          echo "${{ secrets.OCI_CONFIG_CONTENT }}" > oci_config
-          echo "${{ secrets.OCI_API_PRIVATE_KEY }}" > oci_api_private_key.pem
-          chmod 600 oci_api_private_key.pem
-          echo "${{ secrets.OCI_ENV_CONTENT }}" > oci.env
-          echo "${{ secrets.SSH_PUBLIC_KEY }}" > id_rsa.pub
-
-      - name: Run instance creation
-        timeout-minutes: 17
+      - name: Install and configure OCI CLI
         env:
-          MAX_RUNTIME_SECS: ${{ vars.MAX_RUNTIME_SECS || '900' }}
-        run: python main.py
+          OCI_TENANCY: ${{ secrets.OCI_TENANCY }}
+          OCI_USER: ${{ secrets.OCI_USER }}
+          OCI_FINGERPRINT: ${{ secrets.OCI_FINGERPRINT }}
+          OCI_REGION: ap-singapore-2
+          OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+        run: |
+          python3 -m pip install --user --break-system-packages oci-cli
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          mkdir -p ~/.oci
+          printf '%s' "$OCI_PRIVATE_KEY" > ~/.oci/oci_api_key.pem
+          chmod 600 ~/.oci/oci_api_key.pem
+          cat > ~/.oci/config <<EOF
+          [DEFAULT]
+          user=$OCI_USER
+          fingerprint=$OCI_FINGERPRINT
+          tenancy=$OCI_TENANCY
+          region=$OCI_REGION
+          key_file=$HOME/.oci/oci_api_key.pem
+          EOF
+
+      - name: Run OCI provisioning script
+        env:
+          COMPARTMENT_ID: ${{ secrets.COMPARTMENT_ID }}
+          SUBNET_ID: ${{ secrets.SUBNET_ID }}
+          IMAGE_ID: ${{ secrets.IMAGE_ID }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          OCPUS: "1"
+          MEMORY_GB: "6"
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          chmod +x ./launch-oci.sh
+          ./launch-oci.sh
 
       - name: Check if instance was created
         if: always()
@@ -61,12 +78,10 @@ jobs:
         with:
           name: oci-logs-${{ github.run_id }}
           path: |
-            *.log
             INSTANCE_CREATED
-            UNHANDLED_ERROR.log
           retention-days: 7
           if-no-files-found: ignore
 
-      - name: Cleanup sensitive files
+      - name: Cleanup OCI credentials
         if: always()
-        run: rm -f oci_config oci_api_private_key.pem oci.env id_rsa.pub
+        run: rm -f ~/.oci/oci_api_key.pem ~/.oci/config
