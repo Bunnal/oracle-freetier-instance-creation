@@ -29,6 +29,24 @@ BOOT_VOLUME_GB=${BOOT_VOLUME_GB:-100}
 SLEEP_SECONDS=${SLEEP_SECONDS:-60}
 MAX_ATTEMPTS=${MAX_ATTEMPTS:-12}
 
+if [ -n "${AVAILABILITY_DOMAIN:-}" ]; then
+  AVAILABILITY_DOMAIN="$AVAILABILITY_DOMAIN"
+else
+  AVAILABILITY_DOMAIN=$(oci iam availability-domain list \
+    --compartment-id "$COMPARTMENT_ID" \
+    --query "data[0].name" \
+    --raw-output 2>&1)
+  AD_EXIT_CODE=$?
+
+  if [ $AD_EXIT_CODE -ne 0 ] || [ -z "$AVAILABILITY_DOMAIN" ] || [ "$AVAILABILITY_DOMAIN" = "null" ]; then
+    echo "ERROR: Could not discover an availability domain in the OCI region."
+    echo "OCI Response: $AVAILABILITY_DOMAIN"
+    exit 1
+  fi
+fi
+
+echo "INFO: Using availability domain '$AVAILABILITY_DOMAIN'."
+
 SHAPE_CONFIG=$(python3 -c 'import json, os; print(json.dumps({"ocpus": int(os.environ["OCPUS"]), "memory_in_gbs": int(os.environ["MEMORY_GB"])}))')
 METADATA=$(python3 -c 'import json, os; print(json.dumps({"ssh_authorized_keys": os.environ["SSH_KEY"]}))')
 
@@ -39,7 +57,7 @@ for ((attempt=1; attempt<=MAX_ATTEMPTS; attempt++)); do
 
   OUTPUT=$(oci compute instance launch \
     --compartment-id "$COMPARTMENT_ID" \
-    --availability-domain "PMOM:AP-SINGAPORE-2-AD-1" \
+    --availability-domain "$AVAILABILITY_DOMAIN" \
     --shape "VM.Standard.A1.Flex" \
     --shape-config "$SHAPE_CONFIG" \
     --boot-volume-size-in-gbs "$BOOT_VOLUME_GB" \

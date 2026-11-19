@@ -52,6 +52,7 @@ jobs:
           SUBNET_ID: ${{ secrets.SUBNET_ID }}
           IMAGE_ID: ${{ secrets.IMAGE_ID }}
           SSH_KEY: ${{ secrets.SSH_KEY }}
+          AVAILABILITY_DOMAIN: ${{ vars.AVAILABILITY_DOMAIN }}
           OCPUS: "1"
           MEMORY_GB: "6"
         run: |

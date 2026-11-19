@@ -118,6 +118,7 @@ Optional environment variables control retry and resource settings:
 | `OCPUS` | `1` | Flexible ARM OCPU count |
 | `MEMORY_GB` | `6` | Flexible ARM memory in GB |
 | `BOOT_VOLUME_GB` | `100` | Boot volume size in GB |
+| `AVAILABILITY_DOMAIN` | Auto-discovered | Optional repository variable with the exact OCI availability-domain name |
 | `SLEEP_SECONDS` | `60` | Seconds between retries |
 | `MAX_ATTEMPTS` | `12` | Maximum attempts per run |
 
