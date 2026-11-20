@@ -35,7 +35,7 @@ else
   AVAILABILITY_DOMAIN=$(oci iam availability-domain list \
     --compartment-id "$COMPARTMENT_ID" \
     --query "data[0].name" \
-    --raw-output 2>&1)
+    --raw-output 2>/dev/null)
   AD_EXIT_CODE=$?
 
   if [ $AD_EXIT_CODE -ne 0 ] || [ -z "$AVAILABILITY_DOMAIN" ] || [ "$AVAILABILITY_DOMAIN" = "null" ]; then

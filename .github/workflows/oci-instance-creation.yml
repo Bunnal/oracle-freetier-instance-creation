@@ -45,6 +45,7 @@ jobs:
           region=$OCI_REGION
           key_file=$HOME/.oci/oci_api_key.pem
           EOF
+          chmod 600 ~/.oci/config
 
       - name: Run OCI provisioning script
         env:
@@ -57,6 +58,8 @@ jobs:
           MEMORY_GB: "6"
         run: |
           export PATH="$HOME/.local/bin:$PATH"
+          chmod 600 ~/.oci/config ~/.oci/oci_api_key.pem
+          export OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING=True
           chmod +x ./launch-oci.sh
           ./launch-oci.sh
 
