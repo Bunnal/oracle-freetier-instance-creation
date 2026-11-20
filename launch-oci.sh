@@ -60,8 +60,9 @@ echo "INFO: Compartment, subnet, and image resources are accessible."
 OCPUS=${OCPUS:-1}
 MEMORY_GB=${MEMORY_GB:-6}
 BOOT_VOLUME_GB=${BOOT_VOLUME_GB:-100}
-SLEEP_SECONDS=${SLEEP_SECONDS:-60}
-MAX_ATTEMPTS=${MAX_ATTEMPTS:-12}
+SLEEP_SECONDS=${SLEEP_SECONDS:-30}
+MAX_ATTEMPTS=${MAX_ATTEMPTS:-8}
+REQUEST_TIMEOUT_SECONDS=${REQUEST_TIMEOUT_SECONDS:-45}
 
 if [ -n "${AVAILABILITY_DOMAIN:-}" ]; then
   AVAILABILITY_DOMAIN="$AVAILABILITY_DOMAIN"
@@ -97,7 +98,7 @@ echo "Starting server provisioning loop via OCI CLI (${OCPUS} OCPU / ${MEMORY_GB
 for ((attempt=1; attempt<=MAX_ATTEMPTS; attempt++)); do
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] Attempt $attempt/$MAX_ATTEMPTS: Sending instance creation request..."
 
-  OUTPUT=$(oci compute instance launch \
+  OUTPUT=$(timeout --foreground "${REQUEST_TIMEOUT_SECONDS}s" oci compute instance launch \
     --compartment-id "$COMPARTMENT_ID" \
     --availability-domain "$AVAILABILITY_DOMAIN" \
     --shape "VM.Standard.A1.Flex" \
@@ -126,16 +127,20 @@ for ((attempt=1; attempt<=MAX_ATTEMPTS; attempt++)); do
     exit 0
   fi
 
-  ERROR_CODE=$(echo "$OUTPUT" | grep -o '"code": *"[^"]*"' | head -n 1)
-  ERROR_MSG=$(echo "$OUTPUT" | grep -o '"message": *"[^"]*"' | head -n 1)
+  if [ $EXIT_CODE -eq 124 ]; then
+    echo "OCI Request timed out after ${REQUEST_TIMEOUT_SECONDS} seconds."
+  else
+    ERROR_CODE=$(echo "$OUTPUT" | grep -o '"code": *"[^"]*"' | head -n 1)
+    ERROR_MSG=$(echo "$OUTPUT" | grep -o '"message": *"[^"]*"' | head -n 1)
 
-  if [ -n "$ERROR_CODE" ] || [ -n "$ERROR_MSG" ]; then
-    echo "OCI Response: ${ERROR_CODE:-UnknownCode} | ${ERROR_MSG:-NoMessage}"
-    if echo "$OUTPUT" | grep -q '"code": *"CannotParseRequest"'; then
+    if [ -n "$ERROR_CODE" ] || [ -n "$ERROR_MSG" ]; then
+      echo "OCI Response: ${ERROR_CODE:-UnknownCode} | ${ERROR_MSG:-NoMessage}"
+      if echo "$OUTPUT" | grep -q '"code": *"CannotParseRequest"'; then
+        echo "OCI Raw Response: $OUTPUT"
+      fi
+    else
       echo "OCI Raw Response: $OUTPUT"
     fi
-  else
-    echo "OCI Raw Response: $OUTPUT"
   fi
 
   if echo "$OUTPUT" | grep -qE "NotAuthorizedOrNotFound|CannotParseRequest|InvalidParameter|LimitExceeded"; then

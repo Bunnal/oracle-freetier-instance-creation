@@ -12,7 +12,7 @@ concurrency:
 jobs:
   create-instance:
     runs-on: [self-hosted, linux, x64]
-    timeout-minutes: 14
+    timeout-minutes: 12
     if: vars.INSTANCE_CREATED != 'true'
 
     steps:
@@ -56,6 +56,9 @@ jobs:
           AVAILABILITY_DOMAIN: ${{ vars.AVAILABILITY_DOMAIN }}
           OCPUS: "1"
           MEMORY_GB: "6"
+          SLEEP_SECONDS: "30"
+          MAX_ATTEMPTS: "8"
+          REQUEST_TIMEOUT_SECONDS: "45"
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           chmod 600 ~/.oci/config ~/.oci/oci_api_key.pem

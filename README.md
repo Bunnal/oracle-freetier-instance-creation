@@ -1,6 +1,6 @@
 # Oracle Free Tier Instance Creation (GitHub Actions)
 
-Automate Oracle Cloud Free Tier instance creation using GitHub Actions with a **self-hosted runner**. The OCI CLI script retries creating an ARM instance (1 OCPU, 6 GB RAM) every 60 seconds until capacity becomes available.
+Automate Oracle Cloud Free Tier instance creation using GitHub Actions with a **self-hosted runner**. The OCI CLI script retries creating an ARM instance (1 OCPU, 6 GB RAM) until capacity becomes available.
 
 ## How It Works
 
@@ -119,8 +119,9 @@ Optional environment variables control retry and resource settings:
 | `MEMORY_GB` | `6` | Flexible ARM memory in GB |
 | `BOOT_VOLUME_GB` | `100` | Boot volume size in GB |
 | `AVAILABILITY_DOMAIN` | Auto-discovered | Optional repository variable with the exact OCI availability-domain name |
-| `SLEEP_SECONDS` | `60` | Seconds between retries |
-| `MAX_ATTEMPTS` | `12` | Maximum attempts per run |
+| `SLEEP_SECONDS` | `30` | Seconds between retries |
+| `MAX_ATTEMPTS` | `8` | Maximum attempts per run |
+| `REQUEST_TIMEOUT_SECONDS` | `45` | Maximum seconds for one OCI launch request |
 
 ## Local Development
 
