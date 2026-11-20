@@ -23,6 +23,40 @@ if [ -n "$EXISTING_ID" ] && [ "$EXISTING_ID" != "null" ]; then
   exit 0
 fi
 
+echo "INFO: Checking OCI launch resources..."
+
+COMPARTMENT_EXISTS=$(oci iam compartment get \
+  --compartment-id "$COMPARTMENT_ID" \
+  --query "data.id" \
+  --raw-output 2>/dev/null)
+
+if [ -z "$COMPARTMENT_EXISTS" ] || [ "$COMPARTMENT_EXISTS" = "null" ]; then
+  echo "ERROR: COMPARTMENT_ID is missing, inaccessible, or does not belong to this OCI tenancy."
+  exit 1
+fi
+
+SUBNET_EXISTS=$(oci network subnet get \
+  --subnet-id "$SUBNET_ID" \
+  --query "data.id" \
+  --raw-output 2>/dev/null)
+
+if [ -z "$SUBNET_EXISTS" ] || [ "$SUBNET_EXISTS" = "null" ]; then
+  echo "ERROR: SUBNET_ID is missing, inaccessible, or not available in ap-singapore-2."
+  exit 1
+fi
+
+IMAGE_EXISTS=$(oci compute image get \
+  --image-id "$IMAGE_ID" \
+  --query "data.id" \
+  --raw-output 2>/dev/null)
+
+if [ -z "$IMAGE_EXISTS" ] || [ "$IMAGE_EXISTS" = "null" ]; then
+  echo "ERROR: IMAGE_ID is missing, inaccessible, or not available in ap-singapore-2."
+  exit 1
+fi
+
+echo "INFO: Compartment, subnet, and image resources are accessible."
+
 OCPUS=${OCPUS:-1}
 MEMORY_GB=${MEMORY_GB:-6}
 BOOT_VOLUME_GB=${BOOT_VOLUME_GB:-100}
