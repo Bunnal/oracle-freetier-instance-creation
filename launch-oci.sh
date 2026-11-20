@@ -48,7 +48,15 @@ fi
 echo "INFO: Using availability domain '$AVAILABILITY_DOMAIN'."
 
 SHAPE_CONFIG=$(python3 -c 'import json, os; print(json.dumps({"ocpus": int(os.environ["OCPUS"]), "memory_in_gbs": int(os.environ["MEMORY_GB"])}))')
-METADATA=$(python3 -c 'import json, os; print(json.dumps({"ssh_authorized_keys": os.environ["SSH_KEY"]}))')
+
+SSH_KEY_FILE=$(mktemp)
+trap 'rm -f "$SSH_KEY_FILE"' EXIT
+printf '%s' "$SSH_KEY" | sed 's/\\n/\n/g' > "$SSH_KEY_FILE"
+
+if ! grep -Eq '^(ssh-(rsa|ed25519)|ecdsa-[a-z0-9-]+) ' "$SSH_KEY_FILE"; then
+  echo "ERROR: SSH_KEY must contain an SSH public key, not a private key or plain text."
+  exit 1
+fi
 
 echo "Starting server provisioning loop via OCI CLI (${OCPUS} OCPU / ${MEMORY_GB} GB RAM / ${BOOT_VOLUME_GB} GB Storage)..."
 
@@ -64,7 +72,7 @@ for ((attempt=1; attempt<=MAX_ATTEMPTS; attempt++)); do
     --display-name "$DISPLAY_NAME" \
     --image-id "$IMAGE_ID" \
     --subnet-id "$SUBNET_ID" \
-    --metadata "$METADATA" \
+    --ssh-authorized-keys-file "$SSH_KEY_FILE" \
     --assign-public-ip true 2>&1)
 
   EXIT_CODE=$?
@@ -89,11 +97,14 @@ for ((attempt=1; attempt<=MAX_ATTEMPTS; attempt++)); do
 
   if [ -n "$ERROR_CODE" ] || [ -n "$ERROR_MSG" ]; then
     echo "OCI Response: ${ERROR_CODE:-UnknownCode} | ${ERROR_MSG:-NoMessage}"
+    if echo "$OUTPUT" | grep -q '"code": *"CannotParseRequest"'; then
+      echo "OCI Raw Response: $OUTPUT"
+    fi
   else
     echo "OCI Raw Response: $OUTPUT"
   fi
 
-  if echo "$OUTPUT" | grep -qE "NotAuthorizedOrNotFound|InvalidParameter|LimitExceeded"; then
+  if echo "$OUTPUT" | grep -qE "NotAuthorizedOrNotFound|CannotParseRequest|InvalidParameter|LimitExceeded"; then
     echo "CRITICAL: Stopping script due to permission, parameter, or quota error."
     exit 1
   fi
