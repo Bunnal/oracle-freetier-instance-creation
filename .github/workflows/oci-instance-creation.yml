@@ -9,9 +9,39 @@ concurrency:
   group: oci-provisioning-lock
   cancel-in-progress: false
 
+permissions:
+  actions: write
+  contents: read
+
 jobs:
+  select-runner:
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.select.outputs.runner }}
+    steps:
+      - name: Select available runner
+        id: select
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SELF_HOSTED_RUNNER_NAME: ${{ vars.SELF_HOSTED_RUNNER_NAME }}
+          RUNNER_NAME_FALLBACK: "bunal-ubuntu-24-lts"
+        run: |
+          runner_name="${SELF_HOSTED_RUNNER_NAME:-$RUNNER_NAME_FALLBACK}"
+
+          if runner=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runners" 2>/dev/null \
+            | jq -r --arg name "$runner_name" \
+            '.runners[] | select(.name == $name and .status == "online" and (.busy | not)) | .name') \
+            && [ -n "$runner" ]; then
+            echo "Selected self-hosted runner: $runner"
+            echo "runner=$runner" >> "$GITHUB_OUTPUT"
+          else
+            echo "Self-hosted runner is unavailable; selected GitHub-hosted runner."
+            echo "runner=ubuntu-latest" >> "$GITHUB_OUTPUT"
+          fi
+
   create-instance:
-    runs-on: [self-hosted, linux, x64]
+    needs: select-runner
+    runs-on: ${{ needs.select-runner.outputs.runner }}
     timeout-minutes: 12
     if: vars.INSTANCE_CREATED != 'true'
 

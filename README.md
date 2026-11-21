@@ -1,12 +1,12 @@
 # Oracle Free Tier Instance Creation (GitHub Actions)
 
-Automate Oracle Cloud Free Tier instance creation using GitHub Actions with a **self-hosted runner**. The OCI CLI script retries creating an ARM instance (1 OCPU, 6 GB RAM) until capacity becomes available.
+Automate Oracle Cloud Free Tier instance creation using GitHub-hosted runners. The OCI CLI script retries creating an ARM instance (1 OCPU, 6 GB RAM) until capacity becomes available.
 
 ## How It Works
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  GitHub Actions (cron every 20 min)                     │
+│  GitHub Actions (cron every 15 min)                     │
 │                                                         │
 │  1. Checkout repo                                       │
 │  2. Write OCI API config and PEM key to ~/.oci          │
@@ -23,7 +23,6 @@ Automate Oracle Cloud Free Tier instance creation using GitHub Actions with a **
 
 - **Oracle Cloud account** with Free Tier eligibility
 - **OCI API Key** — follow the [Oracle API Key Generation guide](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/apisigningkey.htm) to create one
-- **A server** (Linux/macOS) to run the self-hosted GitHub Actions runner
 - **Existing subnet** — either from a running Micro instance or create one in the OCI console
 
 ## Setup
@@ -70,22 +69,11 @@ Go to **Settings** → **Secrets and variables** → **Actions** → **Variables
 
 > Set this to `true` after your instance is created to stop the cron schedule.
 
-### 4. Set Up Self-Hosted Runner
+### 4. Configure Runner Selection
 
-Go to **Settings** → **Actions** → **Runners** → **New self-hosted runner**.
+The workflow checks whether the named self-hosted runner is online and idle. If it is available, provisioning uses that runner; otherwise it falls back to `ubuntu-latest`.
 
-On your server, run the commands GitHub provides:
-
-```bash
-# GitHub will show the exact download URL and token for your repo.
-# Copy and run those commands on your server. Then:
-
-# Install as a service so it runs on boot
-sudo ./svc.sh install
-sudo ./svc.sh start
-```
-
-> **Tip:** Use `--labels self-hosted` during configuration. The workflow targets the `self-hosted` label.
+Optionally set a repository variable named `SELF_HOSTED_RUNNER_NAME` to the exact runner name shown in **Settings** → **Actions** → **Runners**. The default is `bunal-ubuntu-24-lts`.
 
 ### 5. Trigger the Workflow
 
