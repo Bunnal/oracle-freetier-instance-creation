@@ -6,11 +6,11 @@ Automate Oracle Cloud Free Tier instance creation using GitHub-hosted runners. T
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  GitHub Actions (cron every 15 min)                     │
+│  GitHub Actions (cron every 5 min)                      │
 │                                                         │
 │  1. Checkout repo                                       │
 │  2. Write OCI API config and PEM key to ~/.oci          │
-│  3. Run launch-oci.sh for up to ~12 minutes            │
+│  3. Run launch-oci.sh for up to ~350 minutes           │
 │  4. Instance created? → Stop. Not yet? → Exit cleanly.  │
 │  5. Upload logs as artifacts                            │
 │  6. Cleanup sensitive files                             │
@@ -71,13 +71,15 @@ Go to **Settings** → **Secrets and variables** → **Actions** → **Variables
 
 ### 4. Configure Runner Selection
 
-The workflow checks whether the named self-hosted runner is online and idle. If it is available, provisioning uses that runner; otherwise it falls back to `ubuntu-latest`.
+The workflow checks whether the named self-hosted runner is online, idle, and has the configured label. If it is available, provisioning uses that label; otherwise it falls back to `ubuntu-latest`.
 
-Optionally set a repository variable named `SELF_HOSTED_RUNNER_NAME` to the exact runner name shown in **Settings** → **Actions** → **Runners**. The default is `bunal-ubuntu-24-lts`.
+Add a self-hosted runner named `bunal-ubuntu-24-lts` in **Settings** → **Actions** → **Runners**. By default, the workflow checks for runner name `bunal-ubuntu-24-lts` and routes jobs using the default `self-hosted` label. If your runner uses a different name or a custom label, set the repository variables `SELF_HOSTED_RUNNER_NAME` and `SELF_HOSTED_RUNNER_LABEL` to match.
+
+Create a fine-grained personal access token with **Administration: read** access to this repository, then save it as the `RUNNERS_TOKEN` Actions secret. The workflow uses it to check runner availability; if the API check fails, it logs a warning and uses `ubuntu-latest`.
 
 ### 5. Trigger the Workflow
 
-**Option A — Wait for cron:** The workflow runs automatically every 15 minutes.
+**Option A — Wait for cron:** The workflow runs automatically every 5 minutes.
 
 **Option B — Manual trigger:** Go to **Actions** → **OCI Always Free Provisioning** → **Run workflow**.
 

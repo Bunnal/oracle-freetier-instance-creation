@@ -2,7 +2,7 @@ name: OCI Always Free Provisioning
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 concurrency:
@@ -22,27 +22,43 @@ jobs:
       - name: Select available runner
         id: select
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RUNNERS_TOKEN }}
           SELF_HOSTED_RUNNER_NAME: ${{ vars.SELF_HOSTED_RUNNER_NAME }}
+          SELF_HOSTED_RUNNER_LABEL: ${{ vars.SELF_HOSTED_RUNNER_LABEL }}
           RUNNER_NAME_FALLBACK: "bunal-ubuntu-24-lts"
+          RUNNER_LABEL_FALLBACK: "self-hosted"
         run: |
           runner_name="${SELF_HOSTED_RUNNER_NAME:-$RUNNER_NAME_FALLBACK}"
+          runner_label="${SELF_HOSTED_RUNNER_LABEL:-$RUNNER_LABEL_FALLBACK}"
 
-          if runner=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runners" 2>/dev/null \
-            | jq -r --arg name "$runner_name" \
-            '.runners[] | select(.name == $name and .status == "online" and (.busy | not)) | .name') \
-            && [ -n "$runner" ]; then
-            echo "Selected self-hosted runner: $runner"
-            echo "runner=$runner" >> "$GITHUB_OUTPUT"
+          if ! runners=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runners?per_page=100"); then
+            echo "::warning::Could not list self-hosted runners; using ubuntu-latest. Check the RUNNERS_TOKEN secret and its repository Administration: read permission."
+            echo "runner=ubuntu-latest" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if ! runner_available=$(jq -r \
+            --arg name "$runner_name" \
+            --arg label "$runner_label" \
+            'any((.runners // [])[]; .name == $name and .status == "online" and (.busy | not) and any((.labels // [])[]; .name == $label))' \
+            <<< "$runners"); then
+            echo "::warning::Failed to parse runner status response; using ubuntu-latest."
+            echo "runner=ubuntu-latest" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$runner_available" = "true" ]; then
+            echo "Selected self-hosted runner: $runner_name (label: $runner_label)"
+            echo "runner=$runner_label" >> "$GITHUB_OUTPUT"
           else
-            echo "Self-hosted runner is unavailable; selected GitHub-hosted runner."
+            echo "Self-hosted runner '$runner_name' is offline, busy, or missing label '$runner_label'; using ubuntu-latest."
             echo "runner=ubuntu-latest" >> "$GITHUB_OUTPUT"
           fi
 
   create-instance:
     needs: select-runner
     runs-on: ${{ needs.select-runner.outputs.runner }}
-    timeout-minutes: 12
+    timeout-minutes: 350
     if: vars.INSTANCE_CREATED != 'true'
 
     steps:
@@ -87,7 +103,7 @@ jobs:
           OCPUS: "1"
           MEMORY_GB: "6"
           SLEEP_SECONDS: "30"
-          MAX_ATTEMPTS: "8"
+          MAX_ATTEMPTS: "650"
           REQUEST_TIMEOUT_SECONDS: "45"
         run: |
           export PATH="$HOME/.local/bin:$PATH"
