@@ -2,7 +2,7 @@ name: OCI Always Free Provisioning
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 concurrency:
@@ -58,7 +58,7 @@ jobs:
   create-instance:
     needs: select-runner
     runs-on: ${{ needs.select-runner.outputs.runner }}
-    timeout-minutes: 350
+    timeout-minutes: 300
     if: vars.INSTANCE_CREATED != 'true'
 
     steps:
@@ -102,8 +102,8 @@ jobs:
           AVAILABILITY_DOMAIN: ${{ vars.AVAILABILITY_DOMAIN }}
           OCPUS: "1"
           MEMORY_GB: "6"
-          SLEEP_SECONDS: "30"
-          MAX_ATTEMPTS: "650"
+          SLEEP_SECONDS: "15"
+          MAX_ATTEMPTS: "1100"
           REQUEST_TIMEOUT_SECONDS: "45"
         run: |
           export PATH="$HOME/.local/bin:$PATH"
