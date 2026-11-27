@@ -98,7 +98,7 @@ echo "Starting server provisioning loop via OCI CLI (${OCPUS} OCPU / ${MEMORY_GB
 for ((attempt=1; attempt<=MAX_ATTEMPTS; attempt++)); do
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] Attempt $attempt/$MAX_ATTEMPTS: Sending instance creation request..."
 
-  OUTPUT=$(timeout --foreground "${REQUEST_TIMEOUT_SECONDS}s" oci compute instance launch \
+  OUTPUT=$(timeout --foreground "${REQUEST_TIMEOUT_SECONDS}s" oci --no-retry compute instance launch \
     --compartment-id "$COMPARTMENT_ID" \
     --availability-domain "$AVAILABILITY_DOMAIN" \
     --shape "VM.Standard.A1.Flex" \
@@ -129,6 +129,7 @@ for ((attempt=1; attempt<=MAX_ATTEMPTS; attempt++)); do
 
   if [ $EXIT_CODE -eq 124 ]; then
     echo "OCI Request timed out after ${REQUEST_TIMEOUT_SECONDS} seconds."
+    [ -n "$OUTPUT" ] && echo "OCI Partial Output: $OUTPUT"
   else
     ERROR_CODE=$(echo "$OUTPUT" | grep -o '"code": *"[^"]*"' | head -n 1)
     ERROR_MSG=$(echo "$OUTPUT" | grep -o '"message": *"[^"]*"' | head -n 1)
